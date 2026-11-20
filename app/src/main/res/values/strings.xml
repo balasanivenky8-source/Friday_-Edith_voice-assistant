@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">Friday</string>
+    <string name="friday_wordmark">FRIDAY</string>
+    <string name="friday_subtitle">LIVE VOICE CORE</string>
+
+    <string name="state_disconnected">STANDBY</string>
+    <string name="state_connecting">SYNCING</string>
+    <string name="state_listening">LISTENING</string>
+    <string name="state_speaking">SPEAKING</string>
+    <string name="state_muted">MIC MUTED</string>
+    <string name="state_error">LINK LOST</string>
+
+    <string name="hint_tap_wake">Tap core to wake Friday</string>
+    <string name="hint_connecting">Opening neural link…</string>
+    <string name="hint_listening">Speak freely — Friday is listening</string>
+    <string name="hint_speaking">Interrupt anytime by speaking</string>
+    <string name="hint_muted">Mic muted — tap to unmute</string>
+
+    <string name="cd_power_button">Toggle Friday voice session</string>
+    <string name="cd_camera_vision">Toggle camera vision eyes</string>
+    <string name="cd_flip_camera">Switch front or back camera</string>
+    <string name="cd_screen_vision">Toggle screen vision eyes</string>
+    <string name="cd_mute_mic">Mute or unmute microphone</string>
+    <string name="cd_dismiss_error">Dismiss error</string>
+
+    <string name="vision_camera_active">CAM EYES</string>
+    <string name="vision_screen_active">SCREEN EYES</string>
+    <string name="label_camera">Camera</string>
+    <string name="label_screen">Screen</string>
+    <string name="label_mute">Mute</string>
+    <string name="label_unmute">Unmute</string>
+    <string name="label_retry">Reconnect</string>
+
+    <string name="notification_channel_name">Friday Live Core</string>
+    <string name="notification_channel_desc">Keeps Friday voice and vision active</string>
+    <string name="notification_title">Friday is online</string>
+    <string name="notification_text_voice">Voice link active</string>
+    <string name="notification_text_camera">Voice &amp; camera eyes active</string>
+    <string name="notification_text_screen">Voice &amp; screen eyes active</string>
+    <string name="notification_text_both">Voice, camera &amp; screen eyes active</string>
+
+    <string name="error_mic_permission">Microphone permission is required to talk with Friday.</string>
+    <string name="error_camera_permission">Camera permission is required for Friday camera eyes.</string>
+    <string name="error_screen_denied">Screen capture permission was declined.</string>
+</resources>

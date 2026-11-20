@@ -1,0 +1,6 @@
+{
+  "name": "Friday",
+  "description": "Real-time voice-to-voice AI assistant with live audio streaming, function calling, and camera and screen vision.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
