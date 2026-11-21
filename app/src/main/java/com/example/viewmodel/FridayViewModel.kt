@@ -163,6 +163,10 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
     }
 
     private fun beginLiveVoiceSession() {
+        if (!com.example.ai.ensureDefaultFirebaseApp(appContext)) {
+            sessionManager.connect()
+            return
+        }
         FridayVisionService.startVoiceService(appContext)
         _isMuted.value = false
         audioStreamer.setMuted(false)

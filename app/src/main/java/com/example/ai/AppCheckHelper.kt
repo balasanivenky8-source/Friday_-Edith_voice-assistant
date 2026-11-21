@@ -24,7 +24,11 @@ fun ensureDefaultFirebaseApp(context: Context): Boolean {
     }
 
     val options = FirebaseOptions.fromResource(appContext)
-    if (options == null || options.applicationId.isBlank() || options.apiKey.isBlank()) {
+    if (options == null ||
+        options.applicationId.isBlank() ||
+        options.apiKey.isBlank() ||
+        options.projectId.isNullOrBlank()
+    ) {
         Log.e(
             TAG,
             "FirebaseOptions.fromResource returned null or incomplete options. Ensure app/google-services.json is present when building the APK."
