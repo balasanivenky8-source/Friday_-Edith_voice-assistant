@@ -86,6 +86,15 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
     private var pendingStartAfterMicGrant = false
 
     init {
+        if (!com.example.ai.ensureDefaultFirebaseApp(appContext)) {
+            _uiState.update {
+                it.copy(
+                    orbState = VoiceOrbState.ERROR,
+                    errorMessage = "Firebase is not configured in this APK. Ensure app/google-services.json is included when building."
+                )
+            }
+        }
+
         FridayVisionService.onStopRequestedByNotification = {
             disconnectSession()
         }

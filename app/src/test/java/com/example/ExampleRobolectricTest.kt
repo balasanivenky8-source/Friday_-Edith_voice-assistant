@@ -41,12 +41,22 @@ class ExampleRobolectricTest {
         val initialized = ensureDefaultFirebaseApp(context)
         assertTrue("Default FirebaseApp should initialize from google-services resources", initialized)
         configureAppCheck(context, null)
+        // Verify repeated calls remain idempotent and thread-safe
+        assertTrue(ensureDefaultFirebaseApp(context))
         val app = FirebaseApp.getInstance(FirebaseApp.DEFAULT_APP_NAME)
         assertEquals(FirebaseApp.DEFAULT_APP_NAME, app.name)
         assertTrue(app.options.apiKey.isNotBlank())
         assertEquals("gen-lang-client-0700051686", app.options.projectId)
         assertEquals("1:357366392903:android:bdacdb95f6ebd0427ea962", app.options.applicationId)
         com.google.firebase.appcheck.FirebaseAppCheck.getInstance()
+    }
+
+    @Test
+    fun `FridayViewModel starts idle without Firebase config errors`() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vm = com.example.viewmodel.FridayViewModel(app)
+        assertEquals(VoiceOrbState.IDLE, vm.uiState.value.orbState)
+        assertEquals(null, vm.uiState.value.errorMessage)
     }
 
     @Test

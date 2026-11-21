@@ -17,30 +17,39 @@ private const val DEBUG_STORE_PREFIX = "com.google.firebase.appcheck.debug.store
 private const val DEBUG_SECRET_KEY = "com.google.firebase.appcheck.debug.DEBUG_SECRET"
 private const val RECAPTCHA_SITE_KEY_RES = "recaptcha_site_key"
 
+private val firebaseInitLock = Any()
+
 fun ensureDefaultFirebaseApp(context: Context): Boolean {
     val appContext = context.applicationContext ?: context
-    if (FirebaseApp.getApps(appContext).any { it.name == FirebaseApp.DEFAULT_APP_NAME }) {
-        return true
-    }
+    synchronized(firebaseInitLock) {
+        val hasDefault = FirebaseApp.getApps(appContext).any {
+            it.name == FirebaseApp.DEFAULT_APP_NAME
+        } || runCatching { FirebaseApp.getInstance() }.isSuccess
+        if (hasDefault) {
+            return true
+        }
 
-    val options = FirebaseOptions.fromResource(appContext)
-    if (options == null ||
-        options.applicationId.isBlank() ||
-        options.apiKey.isBlank() ||
-        options.projectId.isNullOrBlank()
-    ) {
-        Log.e(
-            TAG,
-            "FirebaseOptions.fromResource returned null or incomplete options. Ensure app/google-services.json is present when building the APK."
-        )
-        return false
-    }
+        val options = FirebaseOptions.fromResource(appContext)
+        if (options == null ||
+            options.applicationId.isBlank() ||
+            options.apiKey.isBlank() ||
+            options.projectId.isNullOrBlank()
+        ) {
+            Log.e(
+                TAG,
+                "FirebaseOptions.fromResource returned null or incomplete options. Ensure app/google-services.json is present when building the APK."
+            )
+            return false
+        }
 
-    return runCatching {
-        FirebaseApp.initializeApp(appContext, options, FirebaseApp.DEFAULT_APP_NAME) != null
-    }.onFailure { err ->
-        Log.e(TAG, "FirebaseApp.initializeApp failed", err)
-    }.getOrDefault(false)
+        return runCatching {
+            val initialized = FirebaseApp.initializeApp(appContext)
+                ?: FirebaseApp.initializeApp(appContext, options, FirebaseApp.DEFAULT_APP_NAME)
+            initialized != null && runCatching { FirebaseApp.getInstance() }.isSuccess
+        }.onFailure { err ->
+            Log.e(TAG, "FirebaseApp.initializeApp failed", err)
+        }.getOrDefault(false)
+    }
 }
 
 fun configureAppCheck(context: Context, intent: Intent?) {
