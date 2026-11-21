@@ -65,6 +65,7 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
     private val deepThinkEngine = DeepThinkEngine()
     private val toolExecutor = FridayToolExecutor(appContext, deepThinkEngine, this)
     private val sessionManager = FridayLiveSessionManager(
+        context = appContext,
         audioStreamer = audioStreamer,
         toolExecutor = toolExecutor,
         onClearToolTelemetry = { _toolTelemetry.value = null }

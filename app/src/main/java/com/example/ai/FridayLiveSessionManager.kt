@@ -49,6 +49,7 @@ enum class LiveConnectionState {
 
 @OptIn(PublicPreviewAPI::class)
 class FridayLiveSessionManager(
+    private val context: android.content.Context,
     private val audioStreamer: AudioStreamer,
     private val toolExecutor: FridayToolExecutor,
     private val onClearToolTelemetry: () -> Unit
@@ -87,6 +88,12 @@ class FridayLiveSessionManager(
             _connectionState.value == LiveConnectionState.LISTENING ||
             _connectionState.value == LiveConnectionState.SPEAKING
         ) {
+            return
+        }
+        if (!ensureDefaultFirebaseApp(context)) {
+            _errorMessage.value =
+                "Firebase is not configured in this APK. Ensure app/google-services.json is included when building."
+            _connectionState.value = LiveConnectionState.ERROR
             return
         }
         shouldStayConnected = true
