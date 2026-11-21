@@ -1,5 +1,6 @@
 package com.example.ai
 
+import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Log
 import com.google.firebase.Firebase
@@ -16,7 +17,7 @@ import kotlinx.coroutines.withTimeout
 private const val TAG = "DeepThinkEngine"
 private const val THINKING_MODEL = "gemini-4-carbon"
 
-class DeepThinkEngine {
+class DeepThinkEngine(private val context: Context) {
 
     private val reasoningModel by lazy {
         Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -37,6 +38,9 @@ class DeepThinkEngine {
     }
 
     suspend fun analyze(query: String, latestJpegFrame: ByteArray?): String {
+        if (!ensureDefaultFirebaseApp(context)) {
+            return "Firebase is not configured in this APK. Ensure app/google-services.json is included when building."
+        }
         return try {
             withTimeout(60_000L) {
                 val inputContent = content {

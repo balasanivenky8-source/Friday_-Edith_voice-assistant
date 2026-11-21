@@ -62,7 +62,7 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
 
     private val appContext = application.applicationContext
     private val audioStreamer = AudioStreamer()
-    private val deepThinkEngine = DeepThinkEngine()
+    private val deepThinkEngine = DeepThinkEngine(appContext)
     private val toolExecutor = FridayToolExecutor(appContext, deepThinkEngine, this)
     private val sessionManager = FridayLiveSessionManager(
         context = appContext,

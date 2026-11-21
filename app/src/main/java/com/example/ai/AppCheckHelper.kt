@@ -19,21 +19,21 @@ private const val RECAPTCHA_SITE_KEY_RES = "recaptcha_site_key"
 
 fun ensureDefaultFirebaseApp(context: Context): Boolean {
     val appContext = context.applicationContext ?: context
-    if (FirebaseApp.getApps(appContext).isNotEmpty()) {
+    if (FirebaseApp.getApps(appContext).any { it.name == FirebaseApp.DEFAULT_APP_NAME }) {
         return true
     }
 
     val options = FirebaseOptions.fromResource(appContext)
-    if (options == null) {
+    if (options == null || options.applicationId.isBlank() || options.apiKey.isBlank()) {
         Log.e(
             TAG,
-            "FirebaseOptions.fromResource returned null. Ensure app/google-services.json is present when building the APK."
+            "FirebaseOptions.fromResource returned null or incomplete options. Ensure app/google-services.json is present when building the APK."
         )
         return false
     }
 
     return runCatching {
-        FirebaseApp.initializeApp(appContext, options) != null
+        FirebaseApp.initializeApp(appContext, options, FirebaseApp.DEFAULT_APP_NAME) != null
     }.onFailure { err ->
         Log.e(TAG, "FirebaseApp.initializeApp failed", err)
     }.getOrDefault(false)

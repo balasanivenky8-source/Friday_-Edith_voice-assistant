@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import com.example.ai.configureAppCheck
 import com.example.ai.ensureDefaultFirebaseApp
 import com.example.ui.FridayScreen
 import com.example.ui.theme.FridayTheme
@@ -39,7 +40,8 @@ class ExampleRobolectricTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val initialized = ensureDefaultFirebaseApp(context)
         assertTrue("Default FirebaseApp should initialize from google-services resources", initialized)
-        val app = FirebaseApp.getInstance()
+        configureAppCheck(context, null)
+        val app = FirebaseApp.getInstance(FirebaseApp.DEFAULT_APP_NAME)
         assertEquals("gen-lang-client-0700051686", app.options.projectId)
         assertEquals("1:357366392903:android:bdacdb95f6ebd0427ea962", app.options.applicationId)
     }
