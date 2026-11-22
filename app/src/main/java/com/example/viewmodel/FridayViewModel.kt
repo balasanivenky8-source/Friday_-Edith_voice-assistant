@@ -79,6 +79,8 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
 
     private val _toolTelemetry = MutableStateFlow<String?>(null)
     private val _isMuted = MutableStateFlow(false)
+    private val _localErrorMessage = MutableStateFlow<String?>(null)
+    private val _localErrorState = MutableStateFlow(false)
 
     private var pendingCameraContinuation: CompletableDeferred<Boolean>? = null
     private var pendingCameraFrontTarget: Boolean? = null
@@ -87,10 +89,12 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
 
     init {
         if (!com.example.ai.ensureDefaultFirebaseApp(appContext)) {
+            _localErrorState.value = true
+            _localErrorMessage.value = FIREBASE_CONFIG_ERROR
             _uiState.update {
                 it.copy(
                     orbState = VoiceOrbState.ERROR,
-                    errorMessage = "Firebase is not configured in this APK. Ensure app/google-services.json is included when building."
+                    errorMessage = FIREBASE_CONFIG_ERROR
                 )
             }
         }
@@ -99,50 +103,54 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
             disconnectSession()
         }
 
+        val sessionVisionFlow = combine(
+            sessionManager.connectionState,
+            _isMuted,
+            VisionFrameBus.isCameraActive,
+            VisionFrameBus.useFrontCamera,
+            VisionFrameBus.isScreenActive
+        ) { conn, muted, cam, front, screen ->
+            SessionVisionSnapshot(conn, muted, cam, front, screen)
+        }
+
+        val telemetryErrorFlow = combine(
+            audioStreamer.inputLevel,
+            audioStreamer.outputLevel,
+            _toolTelemetry,
+            sessionManager.errorMessage,
+            _localErrorMessage
+        ) { inLvl, outLvl, tool, sessionErr, localErr ->
+            TelemetryErrorSnapshot(inLvl, outLvl, tool, sessionErr ?: localErr)
+        }
+
         viewModelScope.launch {
             combine(
-                sessionManager.connectionState,
-                _isMuted,
-                VisionFrameBus.isCameraActive,
-                VisionFrameBus.useFrontCamera,
-                VisionFrameBus.isScreenActive
-            ) { conn, muted, cam, front, screen ->
-                val orb = when (conn) {
-                    LiveConnectionState.DISCONNECTED -> VoiceOrbState.IDLE
+                sessionVisionFlow,
+                telemetryErrorFlow,
+                _localErrorState
+            ) { sv, te, hasLocalError ->
+                val orb = when (sv.connectionState) {
+                    LiveConnectionState.DISCONNECTED -> {
+                        if (hasLocalError) VoiceOrbState.ERROR else VoiceOrbState.IDLE
+                    }
                     LiveConnectionState.CONNECTING -> VoiceOrbState.CONNECTING
                     LiveConnectionState.LISTENING -> VoiceOrbState.LISTENING
                     LiveConnectionState.SPEAKING -> VoiceOrbState.SPEAKING
                     LiveConnectionState.ERROR -> VoiceOrbState.ERROR
                 }
-                _uiState.value.copy(
+                FridayUiState(
                     orbState = orb,
-                    isMuted = muted,
-                    isCameraActive = cam,
-                    isFrontCamera = front,
-                    isScreenActive = screen
+                    isMuted = sv.isMuted,
+                    isCameraActive = sv.isCameraActive,
+                    isFrontCamera = sv.isFrontCamera,
+                    isScreenActive = sv.isScreenActive,
+                    inputLevel = te.inputLevel,
+                    outputLevel = te.outputLevel,
+                    toolTelemetry = te.toolTelemetry,
+                    errorMessage = te.errorMessage
                 )
             }.collect { updated ->
                 _uiState.value = updated
-            }
-        }
-
-        viewModelScope.launch {
-            combine(
-                audioStreamer.inputLevel,
-                audioStreamer.outputLevel,
-                _toolTelemetry,
-                sessionManager.errorMessage
-            ) { inLvl, outLvl, tool, err ->
-                Triple(inLvl to outLvl, tool, err)
-            }.collect { (levels, tool, err) ->
-                _uiState.update { current ->
-                    current.copy(
-                        inputLevel = levels.first,
-                        outputLevel = levels.second,
-                        toolTelemetry = tool,
-                        errorMessage = err
-                    )
-                }
             }
         }
     }
@@ -157,7 +165,7 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
     }
 
     private fun startSessionWithPermissionCheck() {
-        sessionManager.clearError()
+        clearAllErrors()
         if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
             pendingStartAfterMicGrant = true
             _events.tryEmit(FridayUiEvent.RequestMicPermission)
@@ -230,10 +238,13 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
                 beginLiveVoiceSession()
             }
         } else {
+            val message = appContext.getString(R.string.error_mic_permission)
+            _localErrorState.value = true
+            _localErrorMessage.value = message
             _uiState.update {
                 it.copy(
                     orbState = VoiceOrbState.ERROR,
-                    errorMessage = appContext.getString(R.string.error_mic_permission)
+                    errorMessage = message
                 )
             }
         }
@@ -247,8 +258,10 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
             FridayVisionService.startCamera(appContext, useFront)
             deferred?.complete(true)
         } else {
+            val message = appContext.getString(R.string.error_camera_permission)
+            _localErrorMessage.value = message
             _uiState.update {
-                it.copy(errorMessage = appContext.getString(R.string.error_camera_permission))
+                it.copy(errorMessage = message)
             }
             deferred?.complete(false)
         }
@@ -262,16 +275,29 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
             FridayVisionService.startScreen(appContext, resultCode, data)
             deferred?.complete(resultCode to data)
         } else {
+            val message = appContext.getString(R.string.error_screen_denied)
+            _localErrorMessage.value = message
             _uiState.update {
-                it.copy(errorMessage = appContext.getString(R.string.error_screen_denied))
+                it.copy(errorMessage = message)
             }
             deferred?.complete(null)
         }
     }
 
     fun dismissError() {
+        clearAllErrors()
+    }
+
+    private fun clearAllErrors() {
         sessionManager.clearError()
-        _uiState.update { it.copy(errorMessage = null) }
+        _localErrorState.value = false
+        _localErrorMessage.value = null
+        _uiState.update { current ->
+            current.copy(
+                orbState = if (current.orbState == VoiceOrbState.ERROR) VoiceOrbState.IDLE else current.orbState,
+                errorMessage = null
+            )
+        }
     }
 
     override fun onToolTelemetry(label: String?) {
@@ -353,5 +379,25 @@ class FridayViewModel(application: Application) : AndroidViewModel(application),
         FridayVisionService.onStopRequestedByNotification = null
         disconnectSession()
         super.onCleared()
+    }
+
+    private data class SessionVisionSnapshot(
+        val connectionState: LiveConnectionState,
+        val isMuted: Boolean,
+        val isCameraActive: Boolean,
+        val isFrontCamera: Boolean,
+        val isScreenActive: Boolean
+    )
+
+    private data class TelemetryErrorSnapshot(
+        val inputLevel: Float,
+        val outputLevel: Float,
+        val toolTelemetry: String?,
+        val errorMessage: String?
+    )
+
+    companion object {
+        private const val FIREBASE_CONFIG_ERROR =
+            "Firebase is not configured in this APK. Ensure app/google-services.json is included when building."
     }
 }

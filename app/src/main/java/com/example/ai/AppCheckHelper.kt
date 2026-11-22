@@ -20,6 +20,22 @@ private const val RECAPTCHA_SITE_KEY_RES = "recaptcha_site_key"
 private val firebaseInitLock = Any()
 
 fun ensureDefaultFirebaseApp(context: Context): Boolean {
+    return ensureDefaultFirebaseApp(context) { appContext ->
+        FirebaseOptions.fromResource(appContext)
+    }
+}
+
+internal fun isValidFirebaseOptions(options: FirebaseOptions?): Boolean {
+    return options != null &&
+        options.applicationId.isNotBlank() &&
+        options.apiKey.isNotBlank() &&
+        !options.projectId.isNullOrBlank()
+}
+
+internal fun ensureDefaultFirebaseApp(
+    context: Context,
+    optionsProvider: (Context) -> FirebaseOptions?
+): Boolean {
     val appContext = context.applicationContext ?: context
     synchronized(firebaseInitLock) {
         val hasDefault = FirebaseApp.getApps(appContext).any {
@@ -29,22 +45,22 @@ fun ensureDefaultFirebaseApp(context: Context): Boolean {
             return true
         }
 
-        val options = FirebaseOptions.fromResource(appContext)
-        if (options == null ||
-            options.applicationId.isBlank() ||
-            options.apiKey.isBlank() ||
-            options.projectId.isNullOrBlank()
-        ) {
+        val options = runCatching { optionsProvider(appContext) }
+            .onFailure { err -> Log.e(TAG, "Failed to read FirebaseOptions from resources", err) }
+            .getOrNull()
+
+        if (!isValidFirebaseOptions(options)) {
             Log.e(
                 TAG,
-                "FirebaseOptions.fromResource returned null or incomplete options. Ensure app/google-services.json is present when building the APK."
+                "FirebaseOptions are null or incomplete. Ensure app/google-services.json is present when building the APK."
             )
             return false
         }
 
+        val validOptions = requireNotNull(options)
         return runCatching {
-            val initialized = FirebaseApp.initializeApp(appContext)
-                ?: FirebaseApp.initializeApp(appContext, options, FirebaseApp.DEFAULT_APP_NAME)
+            val initialized = FirebaseApp.initializeApp(appContext, validOptions, FirebaseApp.DEFAULT_APP_NAME)
+                ?: FirebaseApp.initializeApp(appContext)
             initialized != null && runCatching { FirebaseApp.getInstance() }.isSuccess
         }.onFailure { err ->
             Log.e(TAG, "FirebaseApp.initializeApp failed", err)
